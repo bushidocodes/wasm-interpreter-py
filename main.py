@@ -275,6 +275,21 @@ class WasmInterpreter:
             result = left.value - (quotient * right.value)
             return WasmValue("i32", result)
 
+        elif instruction == "i32.rem_u" and len(expr.children) >= 3:
+            left = self._evaluate_expression(expr.children[1])
+            right = self._evaluate_expression(expr.children[2])
+            if right.value == 0:
+                raise RuntimeError("integer divide by zero")
+            # WebAssembly i32.rem_u: unsigned remainder
+            # Convert to unsigned 32-bit values for unsigned remainder
+            left_unsigned = left.value & 0xFFFFFFFF
+            right_unsigned = right.value & 0xFFFFFFFF
+            result = left_unsigned % right_unsigned
+            # Convert result back to signed representation if needed
+            if result >= 0x80000000:
+                result -= 0x100000000
+            return WasmValue("i32", result)
+
         # Default case
         return WasmValue("i32", 0)
 
