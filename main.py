@@ -331,6 +331,68 @@ def evaluate_assert_return(
         return False
 
 
+def evaluate_assert_trap(interpreter: WasmInterpreter, assert_expr: SExprNode) -> bool:
+    """Evaluate an assert_trap expression"""
+    if (
+        not assert_expr.children
+        or len(assert_expr.children) < 3
+        or not isinstance(assert_expr.children[0], SExprNode)
+        or assert_expr.children[0].value != "assert_trap"
+    ):
+        return False
+
+    invoke_expr = assert_expr.children[1]
+    expected_message = assert_expr.children[2].value.strip('"')
+
+    # Parse invoke expression
+    if (
+        not isinstance(invoke_expr, SExprNode)
+        or not invoke_expr.children
+        or len(invoke_expr.children) < 2
+        or not isinstance(invoke_expr.children[0], SExprNode)
+        or invoke_expr.children[0].value != "invoke"
+    ):
+        return False
+
+    func_name = invoke_expr.children[1].value.strip('"')
+
+    # Parse arguments
+    args = []
+    for arg_expr in invoke_expr.children[2:]:
+        if (
+            isinstance(arg_expr, SExprNode)
+            and arg_expr.children
+            and len(arg_expr.children) >= 2
+            and isinstance(arg_expr.children[0], SExprNode)
+            and arg_expr.children[0].value == "i32.const"
+        ):
+            value_str = arg_expr.children[1].value
+            args.append(WasmValue("i32", interpreter.parse_i32_const(value_str)))
+
+    # Try to invoke the function and expect it to trap (throw an exception)
+    try:
+        result = interpreter.invoke(func_name, args)
+        # If we get here, no exception was thrown, so the trap assertion failed
+        print(
+            f"  {func_name}({', '.join(str(arg.value) for arg in args)}) = {result.value} "
+            f"✗ (expected trap: {expected_message})"
+        )
+        return False
+
+    except Exception as e:
+        error_message = str(e).lower()
+        expected_lower = expected_message.lower()
+
+        # Check if the error message matches the expected trap message
+        success = expected_lower in error_message
+
+        print(
+            f"  {func_name}({', '.join(str(arg.value) for arg in args)}) = TRAP: {e} "
+            f"{'✓' if success else '✗'} (expected trap: {expected_message})"
+        )
+        return success
+
+
 class SExpressionParser:
     """Parser for S-expressions in WebAssembly format"""
 
@@ -484,10 +546,10 @@ def main():
                 result_str = f" -> {func.result}" if func.result else ""
                 print(f"  - {name}({params_str}){result_str}")
 
-            print("\nExecuting assert_return tests...")
+            print("\nExecuting assert_return and assert_trap tests...")
             print("-" * 40)
 
-            # Execute assert_return expressions
+            # Execute assert_return and assert_trap expressions
             passed = 0
             failed = 0
 
@@ -496,14 +558,19 @@ def main():
                     expr.children
                     and len(expr.children) > 0
                     and isinstance(expr.children[0], SExprNode)
-                    and expr.children[0].value == "assert_return"
                 ):
-
-                    success = evaluate_assert_return(interpreter, expr)
-                    if success:
-                        passed += 1
-                    else:
-                        failed += 1
+                    if expr.children[0].value == "assert_return":
+                        success = evaluate_assert_return(interpreter, expr)
+                        if success:
+                            passed += 1
+                        else:
+                            failed += 1
+                    elif expr.children[0].value == "assert_trap":
+                        success = evaluate_assert_trap(interpreter, expr)
+                        if success:
+                            passed += 1
+                        else:
+                            failed += 1
 
             print(f"\nTest Results:")
             print(f"- Passed: {passed}")
