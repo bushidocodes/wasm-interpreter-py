@@ -308,13 +308,13 @@ class SExpressionParser:
     """Parser for S-expressions in WebAssembly format"""
 
     def __init__(self):
-        # Token patterns
+        # Token patterns - ORDER MATTERS! HEX must come before NUMBER
         self.token_patterns = [
             (r"\(", "LPAREN"),
             (r"\)", "RPAREN"),
             (r'"[^"]*"', "STRING"),  # String literals
+            (r"0x[0-9a-fA-F]+", "HEX"),  # Hexadecimal numbers - MUST come before NUMBER
             (r"[+-]?\d+\.?\d*", "NUMBER"),  # Numbers (int/float)
-            (r"0x[0-9a-fA-F]+", "HEX"),  # Hexadecimal numbers
             (r"[a-zA-Z_$][a-zA-Z0-9_$.-]*", "IDENTIFIER"),  # Identifiers
             (r";;.*", "COMMENT"),  # Line comments
             (r"\s+", "WHITESPACE"),  # Whitespace
