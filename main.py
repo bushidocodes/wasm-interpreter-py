@@ -225,6 +225,14 @@ class WasmInterpreter:
                 result -= 0x100000000
             return WasmValue("i32", result)
 
+        elif instruction == "i32.sub" and len(expr.children) >= 3:
+            left = self._evaluate_expression(expr.children[1])
+            right = self._evaluate_expression(expr.children[2])
+            result = (left.value - right.value) & 0xFFFFFFFF
+            if result >= 0x80000000:
+                result -= 0x100000000
+            return WasmValue("i32", result)
+
         # Default case
         return WasmValue("i32", 0)
 
