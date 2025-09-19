@@ -241,6 +241,17 @@ class WasmInterpreter:
                 result -= 0x100000000
             return WasmValue("i32", result)
 
+        elif instruction == "i32.div_s" and len(expr.children) >= 3:
+            left = self._evaluate_expression(expr.children[1])
+            right = self._evaluate_expression(expr.children[2])
+            if right.value == 0:
+                raise RuntimeError("integer divide by zero")
+            if left.value == -2147483648 and right.value == -1:
+                raise RuntimeError("integer overflow")
+            # WebAssembly i32.div_s uses truncation toward zero (like C division)
+            result = int(left.value / right.value)
+            return WasmValue("i32", result)
+
         # Default case
         return WasmValue("i32", 0)
 
