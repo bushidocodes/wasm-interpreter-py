@@ -252,6 +252,17 @@ class WasmInterpreter:
             result = int(left.value / right.value)
             return WasmValue("i32", result)
 
+        elif instruction == "i32.div_u" and len(expr.children) >= 3:
+            left = self._evaluate_expression(expr.children[1])
+            right = self._evaluate_expression(expr.children[2])
+            if right.value == 0:
+                raise RuntimeError("integer divide by zero")
+            # Convert to unsigned 32-bit values for unsigned division
+            left_unsigned = left.value & 0xFFFFFFFF
+            right_unsigned = right.value & 0xFFFFFFFF
+            result = left_unsigned // right_unsigned
+            return WasmValue("i32", result)
+
         # Default case
         return WasmValue("i32", 0)
 
