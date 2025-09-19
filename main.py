@@ -263,6 +263,18 @@ class WasmInterpreter:
             result = left_unsigned // right_unsigned
             return WasmValue("i32", result)
 
+        elif instruction == "i32.rem_s" and len(expr.children) >= 3:
+            left = self._evaluate_expression(expr.children[1])
+            right = self._evaluate_expression(expr.children[2])
+            if right.value == 0:
+                raise RuntimeError("integer divide by zero")
+            # WebAssembly i32.rem_s: signed remainder with same sign as dividend
+            # Unlike division, rem_s doesn't have an overflow case
+            # Use truncating division to get proper remainder semantics
+            quotient = int(left.value / right.value)  # Truncating division toward zero
+            result = left.value - (quotient * right.value)
+            return WasmValue("i32", result)
+
         # Default case
         return WasmValue("i32", 0)
 
