@@ -357,7 +357,7 @@ def evaluate_assert_return(
 
         print(
             f"  {func_name}({', '.join(str(arg.value) for arg in args)}) = {actual_result.value} "
-            f"{'✓' if success else '✗'} (expected {expected_value.value})"
+            f"{'PASS' if success else 'FAIL'} (expected {expected_value.value})"
         )
 
         return success
@@ -413,7 +413,7 @@ def evaluate_assert_trap(interpreter: WasmInterpreter, assert_expr: SExprNode) -
         # If we get here, no exception was thrown, so the trap assertion failed
         print(
             f"  {func_name}({', '.join(str(arg.value) for arg in args)}) = {result.value} "
-            f"✗ (expected trap: {expected_message})"
+            f"FAIL (expected trap: {expected_message})"
         )
         return False
 
@@ -426,7 +426,7 @@ def evaluate_assert_trap(interpreter: WasmInterpreter, assert_expr: SExprNode) -
 
         print(
             f"  {func_name}({', '.join(str(arg.value) for arg in args)}) = TRAP: {e} "
-            f"{'✓' if success else '✗'} (expected trap: {expected_message})"
+            f"{'PASS' if success else 'FAIL'} (expected trap: {expected_message})"
         )
         return success
 
@@ -616,14 +616,14 @@ def main():
             print(f"- Total: {passed + failed}")
 
             if failed == 0 and passed > 0:
-                print("✅ All tests passed!")
+                print("All tests passed!")
             elif passed > 0:
-                print(f"⚠️ {passed}/{passed + failed} tests passed")
+                print(f"{passed}/{passed + failed} tests passed")
             else:
-                print("❌ No tests passed")
+                print("No tests passed")
 
         else:
-            print("❌ No module found in the file")
+            print("No module found in the file")
     else:
         print("No expressions found or error occurred.")
 
