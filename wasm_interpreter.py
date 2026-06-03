@@ -230,7 +230,8 @@ class WasmInterpreter:
                 raise RuntimeError("integer divide by zero")
             if left.value == -2147483648 and right.value == -1:
                 raise RuntimeError("integer overflow")
-            result = int(left.value / right.value)
+            sign = -1 if (left.value < 0) != (right.value < 0) else 1
+            result = sign * (abs(left.value) // abs(right.value))
             return WasmValue("i32", result)
 
         elif instruction == "i32.div_u" and len(expr.children) >= 3:
@@ -248,7 +249,8 @@ class WasmInterpreter:
             right = self._evaluate_expression(expr.children[2])
             if right.value == 0:
                 raise RuntimeError("integer divide by zero")
-            quotient = int(left.value / right.value)
+            sign = -1 if (left.value < 0) != (right.value < 0) else 1
+            quotient = sign * (abs(left.value) // abs(right.value))
             result = left.value - (quotient * right.value)
             return WasmValue("i32", result)
 
