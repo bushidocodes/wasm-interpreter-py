@@ -273,11 +273,12 @@ class SExpressionParser:
     """Parser for S-expressions in WebAssembly format"""
 
     def __init__(self):
-        # Token patterns - ORDER MATTERS: HEX must come before NUMBER
+        # Token patterns - ORDER MATTERS: SIGNED_HEX and HEX must come before NUMBER
         self.token_patterns = [
             (r"\(", "LPAREN"),
             (r"\)", "RPAREN"),
             (r'"[^"]*"', "STRING"),
+            (r"-0x[0-9a-fA-F]+", "SIGNED_HEX"),  # must precede HEX and NUMBER
             (r"0x[0-9a-fA-F]+", "HEX"),
             (r"[+-]?\d+\.?\d*", "NUMBER"),
             (r"[a-zA-Z_$][a-zA-Z0-9_$.-]*", "IDENTIFIER"),
@@ -335,7 +336,7 @@ class SExpressionParser:
 
                 return SExprNode(children), index
 
-            elif token_type in ["IDENTIFIER", "STRING", "NUMBER", "HEX"]:
+            elif token_type in ["IDENTIFIER", "STRING", "NUMBER", "HEX", "SIGNED_HEX"]:
                 return SExprNode(value), index + 1
 
             else:
