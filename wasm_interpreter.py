@@ -242,6 +242,8 @@ class WasmInterpreter:
             left_unsigned = left.value & 0xFFFFFFFF
             right_unsigned = right.value & 0xFFFFFFFF
             result = left_unsigned // right_unsigned
+            if result >= 0x80000000:
+                result -= 0x100000000
             return WasmValue("i32", result)
 
         elif instruction == "i32.rem_s" and len(expr.children) >= 3:
