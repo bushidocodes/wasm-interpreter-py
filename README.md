@@ -39,11 +39,17 @@ Tests are written in the [WebAssembly spec test format](https://github.com/WebAs
 
 ## Architecture
 
-Everything lives in `main.py`:
+Core logic lives in `wasm_interpreter.py`; `main.py` is the CLI entry point.
+
+**`wasm_interpreter.py`**
 
 - **`SExpressionParser`** — tokenizes and parses S-expression text into a tree
 - **`WasmInterpreter`** — loads a module and evaluates function calls against it
 - **`evaluate_assert_return` / `evaluate_assert_trap`** — test harness that runs spec assertions
+
+**`main.py`**
+
+- **`main()`** — CLI entry point; loads a `.wast` file, runs all assertions, and prints a summary
 
 ## Requirements
 
