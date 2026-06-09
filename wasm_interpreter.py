@@ -292,8 +292,39 @@ class SExpressionParser:
             for pattern, token_type in self.token_patterns
         ]
 
+    def strip_block_comments(self, text: str) -> str:
+        """Remove WAT block comments of the form (; ... ;), including nested ones.
+
+        Block comments may be nested, e.g. (; outer (; inner ;) still outer ;).
+        Each matched comment is replaced with a single space so that token
+        positions (line/column) are not wildly distorted.
+        """
+        result = []
+        pos = 0
+        length = len(text)
+        while pos < length:
+            # Opening delimiter
+            if text[pos : pos + 2] == "(;":
+                depth = 1
+                pos += 2
+                while pos < length and depth > 0:
+                    if text[pos : pos + 2] == "(;":
+                        depth += 1
+                        pos += 2
+                    elif text[pos : pos + 2] == ";)":
+                        depth -= 1
+                        pos += 2
+                    else:
+                        pos += 1
+                result.append(" ")
+            else:
+                result.append(text[pos])
+                pos += 1
+        return "".join(result)
+
     def tokenize(self, text: str) -> List[tuple]:
         """Tokenize the input text"""
+        text = self.strip_block_comments(text)
         tokens = []
         pos = 0
 
