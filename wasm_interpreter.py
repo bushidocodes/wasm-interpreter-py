@@ -107,6 +107,23 @@ class WasmInterpreter:
         if module_expr.children[0].value != "module":
             return
 
+        # Handle (module quote "..." "..." ...) — concatenate WAT string literals and re-parse.
+        if (
+            len(module_expr.children) > 1
+            and isinstance(module_expr.children[1], SExprNode)
+            and module_expr.children[1].value == "quote"
+        ):
+            parts = []
+            for child in module_expr.children[2:]:
+                if isinstance(child, SExprNode) and child.value is not None:
+                    parts.append(_process_wat_string(child.value))
+            wat_content = "".join(parts)
+            parser = SExpressionParser()
+            exprs = parser.parse(f"(module {wat_content})")
+            if exprs:
+                self.load_module(exprs[0])
+            return
+
         for child in module_expr.children[1:]:
             if (
                 isinstance(child, SExprNode)
@@ -140,6 +157,8 @@ class WasmInterpreter:
                 elif directive == "result" and len(child.children) > 1:
                     result = child.children[1].value
                 elif isinstance(directive, str) and directive.startswith("i32."):
+                    body = child
+                elif directive == "return":
                     body = child
 
         if export_name and body:
@@ -268,6 +287,11 @@ class WasmInterpreter:
                 result -= 0x100000000
             return WasmValue("i32", result)
 
+        elif instruction == "return":
+            if len(expr.children) > 1:
+                return self._evaluate_expression(expr.children[1])
+            return WasmValue("i32", 0)
+
         return WasmValue("i32", 0)
 
 
@@ -279,12 +303,12 @@ class SExpressionParser:
         self.token_patterns = [
             (r"\(", "LPAREN"),
             (r"\)", "RPAREN"),
-            (r'"[^"]*"', "STRING"),
+            (r'"(?:[^"\\]|\\.)*"', "STRING"),
             (r"-0x[0-9a-fA-F]+", "SIGNED_HEX"),  # must precede HEX and NUMBER
             (r"0x[0-9a-fA-F]+", "HEX"),
             (r"[+-]?\d+\.?\d*", "NUMBER"),
             (r"[a-zA-Z_$][a-zA-Z0-9_$.-]*", "IDENTIFIER"),
-            (r";;.*", "COMMENT"),
+            (r";;[^\r\n]*", "COMMENT"),
             (r"\s+", "WHITESPACE"),
         ]
         self.compiled_patterns = [
@@ -292,8 +316,44 @@ class SExpressionParser:
             for pattern, token_type in self.token_patterns
         ]
 
+    def strip_block_comments(self, text: str) -> str:
+        """Remove WAT block comments of the form (; ... ;), including nested ones.
+
+        Block comments may be nested, e.g. (; outer (; inner ;) still outer ;).
+        Each matched comment is replaced with a single space so that token
+        positions (line/column) are not wildly distorted.
+        """
+        result = []
+        pos = 0
+        length = len(text)
+        while pos < length:
+            # Line comment: copy verbatim until end of line so ;; takes priority over (;
+            if text[pos : pos + 2] == ";;":
+                while pos < length and text[pos] not in ("\n", "\r"):
+                    result.append(text[pos])
+                    pos += 1
+            # Opening block comment delimiter
+            elif text[pos : pos + 2] == "(;":
+                depth = 1
+                pos += 2
+                while pos < length and depth > 0:
+                    if text[pos : pos + 2] == "(;":
+                        depth += 1
+                        pos += 2
+                    elif text[pos : pos + 2] == ";)":
+                        depth -= 1
+                        pos += 2
+                    else:
+                        pos += 1
+                result.append(" ")
+            else:
+                result.append(text[pos])
+                pos += 1
+        return "".join(result)
+
     def tokenize(self, text: str) -> List[tuple]:
         """Tokenize the input text"""
+        text = self.strip_block_comments(text)
         tokens = []
         pos = 0
 
@@ -358,6 +418,21 @@ class SExpressionParser:
         """Parse S-expressions from text"""
         tokens = self.tokenize(text)
         return self.parse_tokens(tokens)
+
+
+def _process_wat_string(token_value: str) -> str:
+    """Strip outer quotes and decode WAT string escapes (e.g. \\0a → LF, \\" → ")."""
+    s = token_value
+    if s.startswith('"') and s.endswith('"'):
+        s = s[1:-1]
+
+    def _replace(m):
+        esc = m.group(1)
+        if len(esc) == 2:
+            return chr(int(esc, 16))
+        return {"n": "\n", "r": "\r", "t": "\t", '"': '"', "\\": "\\"}.get(esc, m.group(0))
+
+    return re.sub(r'\\([0-9a-fA-F]{2}|[nrt"\\])', _replace, s)
 
 
 def parse_wast_file(filename: str):
