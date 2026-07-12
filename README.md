@@ -4,27 +4,30 @@ A WebAssembly interpreter written in Python. Parses and executes WebAssembly Tex
 
 ## Status
 
-Currently implements **i32 arithmetic operations**:
+Currently implements the **i32 numeric instructions**:
 
-| Instruction | Description |
+| Group | Instructions |
 |---|---|
-| `i32.add` | Addition with 32-bit overflow wrapping |
-| `i32.sub` | Subtraction with 32-bit underflow wrapping |
-| `i32.mul` | Multiplication with 32-bit overflow wrapping |
-| `i32.div_s` | Signed division, truncates toward zero |
-| `i32.div_u` | Unsigned division |
-| `i32.rem_s` | Signed remainder (sign follows dividend) |
-| `i32.rem_u` | Unsigned remainder |
+| Arithmetic | `i32.add`, `i32.sub`, `i32.mul`, `i32.div_s`, `i32.div_u`, `i32.rem_s`, `i32.rem_u` |
+| Bitwise | `i32.and`, `i32.or`, `i32.xor` |
+| Shifts / rotates | `i32.shl`, `i32.shr_s`, `i32.shr_u`, `i32.rotl`, `i32.rotr` |
+| Bit counting | `i32.clz`, `i32.ctz`, `i32.popcnt` |
+| Comparisons | `i32.eqz`, `i32.eq`, `i32.ne`, `i32.lt_s`, `i32.lt_u`, `i32.le_s`, `i32.le_u`, `i32.gt_s`, `i32.gt_u`, `i32.ge_s`, `i32.ge_u` |
+| Sign extension | `i32.extend8_s`, `i32.extend16_s` |
 
 Trap semantics are implemented for divide-by-zero and signed overflow (`INT_MIN / -1`).
+Unsupported instructions, unknown locals, and malformed constants raise errors rather
+than silently producing wrong results.
 
 ## Usage
 
 ```
-python main.py
+python main.py [file.wast]
 ```
 
-This loads `i32.wast` and runs all the test assertions in it, printing pass/fail for each and a summary at the end.
+This loads `i32.wast` (or the given `.wast` file) and runs all the test assertions in it,
+printing pass/fail for each and a summary at the end. The exit code is non-zero if any
+assertion fails.
 
 ## Tests
 
@@ -35,7 +38,10 @@ Tests are written in the [WebAssembly spec test format](https://github.com/WebAs
 (assert_trap  (invoke "div_s" (i32.const 1) (i32.const 0)) "integer divide by zero")
 ```
 
-`i32.wast` contains ~100 test cases covering all supported operations, including edge cases like overflow wrapping, signed/unsigned interpretation, and trap conditions.
+`i32.wast` contains 372 test cases covering all supported operations, including edge cases
+like overflow wrapping, signed/unsigned interpretation, shift counts ≥ 32, and trap
+conditions. Every expected value has been cross-validated against
+[wasmtime](https://wasmtime.dev/).
 
 ## Architecture
 
