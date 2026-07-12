@@ -24,33 +24,38 @@ def main():
     print("Parsing WebAssembly S-expressions...")
     print("=" * 50)
 
-    expressions, content = parse_wast_file(wast_file)
+    try:
+        expressions, content = parse_wast_file(wast_file)
+    except (OSError, ValueError) as e:
+        print(f"Error reading file '{wast_file}': {e}")
+        sys.exit(1)
 
     if not expressions:
-        print("No expressions found or error occurred.")
-        return
+        print("No expressions found.")
+        sys.exit(1)
 
     print(f"Successfully parsed {len(expressions)} top-level expressions")
     print(f"File size: {len(content)} characters")
 
     interpreter = WasmInterpreter()
 
-    module_expr = None
-    for expr in expressions:
+    module_exprs = [
+        expr
+        for expr in expressions
         if (
             expr.children
             and isinstance(expr.children[0], SExprNode)
             and expr.children[0].value == "module"
-        ):
-            module_expr = expr
-            break
+        )
+    ]
 
-    if not module_expr:
+    if not module_exprs:
         print("No module found in the file")
-        return
+        sys.exit(1)
 
-    print("\nLoading WebAssembly module...")
-    interpreter.load_module(module_expr)
+    print(f"\nLoading {len(module_exprs)} WebAssembly module(s)...")
+    for module_expr in module_exprs:
+        interpreter.load_module(module_expr)
 
     print(f"Loaded {len(interpreter.functions)} functions:")
     for name, func in interpreter.functions.items():
@@ -91,8 +96,10 @@ def main():
         print("All tests passed!")
     elif passed > 0:
         print(f"{passed}/{passed + failed} tests passed")
+        sys.exit(1)
     else:
         print("No tests passed")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
