@@ -1,0 +1,28 @@
+[project]
+name = "wasm-interpreter-py"
+version = "0.1.0"
+description = "A partial WebAssembly interpreter in Python (WAT/WAST, i32 ops)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Sean McBride" }]
+
+[project.optional-dependencies]
+dev = ["ruff>=0.9"]
+
+[project.scripts]
+wasm-interpreter-py = "main:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["wasm_interpreter", "main"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E9", "F821", "F822", "F823"]
